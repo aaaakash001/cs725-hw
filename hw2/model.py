@@ -53,7 +53,7 @@ class LitGenericClassifier(pl.LightningModule):
         (x,y) = batch
         y_hat = self.model(x)
         loss = self.loss_func(y_hat,y)
-        acc = torch.mean(torch.float((torch.argmax(y_hat,dim=1)== y)))
+        acc = torch.mean(((torch.argmax(y_hat,dim=1)== y).float()))
         self.log('train_loss', loss.item())
         self.log('train_acc', acc)
         return loss
@@ -86,7 +86,7 @@ class LitGenericClassifier(pl.LightningModule):
         (x,y) = batch
         y_hat = self.model(x)
         loss = self.loss_func(y_hat,y)
-        acc = torch.mean(torch.float((torch.argmax(y_hat,dim=1)== y)))
+        acc = torch.mean(((torch.argmax(y_hat,dim=1)== y).float()))
         self.log('valid_loss', loss)
         self.log('valid_acc', acc)
         return {
@@ -123,7 +123,7 @@ class LitGenericClassifier(pl.LightningModule):
         (x,y) = batch
         y_hat = self.model(x)
         loss = self.loss_func(y_hat,y)
-        acc = torch.mean(torch.float((torch.argmax(y_hat,dim=1)== y)))
+        acc = torch.mean(((torch.argmax(y_hat,dim=1)== y).float()))
         self.log('test_loss', loss)
         self.log('test_acc', acc)
         return {
@@ -174,7 +174,7 @@ class LitSimpleClassifier(LitGenericClassifier):
         # choose an optimizer from `torch.optim.*`
         # use `self.lr` to set the learning rate
         # other parameters (e.g. momentum) may be hardcoded here
-        return torch.optim.SGD(self.model,self.lr,momentum=0.9)
+        return torch.optim.SGD(self.model.parameters(),self.lr)
 
 class LitDigitsClassifier(LitGenericClassifier):
     def __init__(self, lr=0):
@@ -184,7 +184,7 @@ class LitDigitsClassifier(LitGenericClassifier):
             nn.ReLU(), # build your model here using `torch.nn.*` modules
             nn.Linear(128,128),
             nn.ReLU(),
-            nn.Linear(64,64),
+            nn.Linear(128,64),
             nn.Linear(64, 10)   # num_classes = 10
         )
     
@@ -196,4 +196,4 @@ class LitDigitsClassifier(LitGenericClassifier):
         # choose an optimizer from `torch.optim.*`
         # use `self.lr` to set the learning rate
         # other parameters (e.g. momentum) may be hardcoded here
-        return torch.optim.SGD(self.model,self.lr,momentum=0.9)
+        return torch.optim.SGD(self.model.parameters(),self.lr)
