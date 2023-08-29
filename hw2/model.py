@@ -50,8 +50,10 @@ class LitGenericClassifier(pl.LightningModule):
         gradient and update weights by calling `optim.step()`. You just need to return the `loss`
         appropriately. We log these values every step so that it is easier to compare various runs.
         """
-        loss = ...
-        acc = ...
+        (x,y) = batch
+        y_hat = self.model(x)
+        loss = self.loss_func(y_hat,y)
+        acc = torch.mean(torch.float((torch.argmax(y_hat,dim=1)== y)))
         self.log('train_loss', loss.item())
         self.log('train_acc', acc)
         return loss
@@ -81,8 +83,10 @@ class LitGenericClassifier(pl.LightningModule):
           These values will be useful for you to assess overfitting and help you determine which model
         to submit on the leaderboard and in the final submission.
         """
-        loss = ...
-        acc = ...
+        (x,y) = batch
+        y_hat = self.model(x)
+        loss = self.loss_func(y_hat,y)
+        acc = torch.mean(torch.float((torch.argmax(y_hat,dim=1)== y)))
         self.log('valid_loss', loss)
         self.log('valid_acc', acc)
         return {
@@ -116,8 +120,10 @@ class LitGenericClassifier(pl.LightningModule):
         evaluating your model. You can simply copy over the code from `validation_step` into this if 
         you wish. Just ensure that this calculation is correct.
         """
-        loss = ...
-        acc = ...
+        (x,y) = batch
+        y_hat = self.model(x)
+        loss = self.loss_func(y_hat,y)
+        acc = torch.mean(torch.float((torch.argmax(y_hat,dim=1)== y)))
         self.log('test_loss', loss)
         self.log('test_acc', acc)
         return {
@@ -143,16 +149,21 @@ class LitGenericClassifier(pl.LightningModule):
         `y_pred`: `torch.LongTensor` of size (B,) such that `y_pred[i]` for 0 <= i < B is the label
         predicted by the classifier for `x[i]`
         """
-        y_pred = ...
+        y_hat = self.model(x)
+        y_pred = torch.LongTensor(size=(torch.numel(x),1))
+        y_pred = torch.argmax(y_hat,dim=1)
         return y_pred
 
 class LitSimpleClassifier(LitGenericClassifier):
     def __init__(self, lr=0):
         super().__init__(lr=lr)
         self.model = nn.Sequential(
-            nn.Linear(2, ...), # d = 2
-            ..., # build your model here using `torch.nn.*` modules
-            nn.Linear(..., 4)  # num_classes = 4
+            nn.Linear(2, 10), # d = 2
+            # build your model here using `torch.nn.*` modules
+            nn.ReLU(),
+            nn.Linear(10,10),
+            nn.ReLU(),
+            nn.Linear(10, 4)  # num_classes = 4
         )
 
     def transform_input(self, batch):
@@ -163,15 +174,18 @@ class LitSimpleClassifier(LitGenericClassifier):
         # choose an optimizer from `torch.optim.*`
         # use `self.lr` to set the learning rate
         # other parameters (e.g. momentum) may be hardcoded here
-        return torch.optim.<optim_name>(...)
+        return torch.optim.SGD(self.model,self.lr,momentum=0.9)
 
 class LitDigitsClassifier(LitGenericClassifier):
     def __init__(self, lr=0):
         super().__init__(lr=lr)
         self.model = nn.Sequential(
-            nn.Linear(64, ...), # d = 64
-            ..., # build your model here using `torch.nn.*` modules
-            nn.Linear(.., 10)   # num_classes = 10
+            nn.Linear(64,128), # d = 64
+            nn.ReLU(), # build your model here using `torch.nn.*` modules
+            nn.Linear(128,128),
+            nn.ReLU(),
+            nn.Linear(64,64),
+            nn.Linear(64, 10)   # num_classes = 10
         )
     
     def transform_input(self, batch):
@@ -182,4 +196,4 @@ class LitDigitsClassifier(LitGenericClassifier):
         # choose an optimizer from `torch.optim.*`
         # use `self.lr` to set the learning rate
         # other parameters (e.g. momentum) may be hardcoded here
-        return torch.optim.<optim_name>(...)
+        return torch.optim.SGD(self.model,self.lr,momentum=0.9)
