@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
+import torch.optim.lr_scheduler as lr_scheduler
 
 class LitGenericClassifier(pl.LightningModule):
     """
@@ -53,7 +54,7 @@ class LitGenericClassifier(pl.LightningModule):
         (x,y) = batch
         y_hat = self.model(x)
         loss = self.loss_func(y_hat,y)
-        acc = torch.mean(((torch.argmax(y_hat,dim=1)== y).float()))
+        acc = torch.mean(((torch.argmax(y_hat,dim=1)== y).float())) # float to convert to false = 0. and true=1.
         self.log('train_loss', loss.item())
         self.log('train_acc', acc)
         return loss
@@ -181,11 +182,21 @@ class LitDigitsClassifier(LitGenericClassifier):
         super().__init__(lr=lr)
         self.model = nn.Sequential(
             nn.Linear(64,128), # d = 64
-            nn.ReLU(), # build your model here using `torch.nn.*` modules
-            nn.Linear(128,128),
-            nn.ReLU(),
+            nn.ELU(), # build your model here using `torch.nn.*` modules
             nn.Linear(128,64),
-            nn.Linear(64, 10)   # num_classes = 10
+            nn.ELU(),
+            nn.Dropout(p=0.3),
+            nn.Linear(64,32),
+            nn.ELU(),
+            nn.Dropout(p=0.3),
+            nn.Linear(32,16),
+            nn.ELU(),
+            # # nn.Linear(128,64),
+            # # nn.PReLU(),
+            # nn.Linear(32,16),
+            # nn.ELU(),
+            nn.Dropout(p=0.3),
+            nn.Linear(16, 10)   # num_classes = 10
         )
     
     def transform_input(self, batch):
@@ -196,4 +207,25 @@ class LitDigitsClassifier(LitGenericClassifier):
         # choose an optimizer from `torch.optim.*`
         # use `self.lr` to set the learning rate
         # other parameters (e.g. momentum) may be hardcoded here
-        return torch.optim.SGD(self.model.parameters(),self.lr)
+        
+        #option 1
+        # optimizer = torch.optim.Adadelta(self.model.parameters(),self.lr)
+        # return optimizer
+
+        #option 2
+        # optimizer = torch.optim.Adadelta(self.model.parameters(),self.lr)
+        # scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
+        # return  {
+        #     'optimizer': optimizer,
+        #     'lr_scheduler': scheduler
+        # }
+
+        # option 3
+        optimizer = torch.optim.Adadelta(self.model.parameters(),self.lr)
+        scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, factor=0.5, verbose=True)
+        return {
+            'optimizer': optimizer,
+            'lr_scheduler': scheduler,
+            'monitor': 'valid_loss'  # Specify the metric to monitor for scheduling
+        }
+        
